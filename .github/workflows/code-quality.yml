@@ -1,0 +1,58 @@
+name: Code Quality Checks
+
+'on':
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    name: Linting and Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install ESLint and Prettier
+        run: npm install --save-dev eslint prettier eslint-config-next eslint-plugin-react @typescript-eslint/parser @typescript-eslint/eslint-plugin
+
+      - name: Create ESLint config
+        run: |
+          cat << 'EOF' > .eslintrc.js
+          module.exports = {
+            extends: ['next', 'eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+            parser: '@typescript-eslint/parser',
+            plugins: ['@typescript-eslint'],
+            rules: {
+              '@typescript-eslint/no-unused-vars': 'warn',
+              'react/no-unescaped-entities': 'off'
+            }
+          };
+          EOF
+
+      - name: Create Prettier config
+        run: |
+          cat << 'EOF' > .prettierrc
+          {
+            "semi": true,
+            "singleQuote": true,
+            "tabWidth": 2,
+            "trailingComma": "es5"
+          }
+          EOF
+
+      - name: Run ESLint
+        run: npx eslint . --ext .ts,.tsx
+
+      - name: Run Prettier check
+        run: npx prettier --check .
