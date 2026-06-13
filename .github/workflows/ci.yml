@@ -1,0 +1,17 @@
+name: CI - Build and Lint
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "['Checkout repository', 'Set up Node.js', 'Install dependencies using npm', 'Run build step (npm run build)']"
+        run: echo "TODO - implement build"
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "['Checkout repository', 'Set up Node.js', 'Install dependencies using npm', 'Run ESLint (if configured) or TypeScript type-check (npm run type-check)']"
+        run: echo "TODO - implement lint"
