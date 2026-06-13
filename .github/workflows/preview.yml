@@ -1,0 +1,11 @@
+name: Deploy Preview
+
+on: [pull_request]
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "['Checkout repository', 'Set up Node.js', 'Install dependencies using npm', 'Run build step (npm run build)', 'Deploy to Vercel/Netlify preview environment (if applicable)']"
+        run: echo "TODO - implement deploy-preview"
