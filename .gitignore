@@ -39,3 +39,6 @@ next-env.d.ts
 .vscode
 certificates
 node_modules
+
+# data exports from scripts/export-data.mjs
+/exports

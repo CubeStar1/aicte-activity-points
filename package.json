@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export": "node scripts/export-data.mjs"
   },
   "dependencies": {
     "@ai-sdk/cerebras": "^1.0.32",
