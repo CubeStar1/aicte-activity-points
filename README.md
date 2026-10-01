@@ -40,3 +40,23 @@ A tool for generating AICTE Activity Points forms for RVCE students
    ```
 
 7. Open [http://localhost:3000](http://localhost:3000) with your browser.
+
+## Troubleshooting
+
+### Uploads fail with `DatabaseError` (500) on local Supabase
+
+When running Supabase locally (`supabase start`), image and certificate uploads can fail with a `500 DatabaseError` response. The Storage container logs show:
+
+```
+42P10: there is no unique or exclusion constraint matching the ON CONFLICT specification
+```
+
+This is a bug in local `storage-api` v1.77.0, not in this app. Its upload query upserts with `ON CONFLICT (bucket_id, name COLLATE "C") WHERE archived_at IS NULL`, but its own schema migrations leave behind a unique index on `(bucket_id, name)` without `COLLATE "C"`, so Postgres can't match the two. Hosted Supabase projects are not affected.
+
+**Fix:** create the matching index as `supabase_admin`. Running it from the Studio SQL editor fails with `42501: must be owner of table objects`, because Studio queries run as `postgres`.
+
+```bash
+docker exec supabase_db_aicte-activity-points psql -U supabase_admin -d postgres -c 'CREATE UNIQUE INDEX IF NOT EXISTS idx_objects_current_version_c ON storage.objects (bucket_id, name COLLATE "C") WHERE archived_at IS NULL;'
+```
+
+Only the index is added; nothing else changes. Run the command again after `supabase db reset` or after recreating the database volume, since both remove it. You can drop the index once a newer Storage release fixes the mismatch.

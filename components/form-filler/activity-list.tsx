@@ -595,8 +595,8 @@ export function ActivityList({
                       }
 
                       const validFiles = files.filter(file => {
-                        if (file.size > 1024 * 1024) {
-                          alert(`File ${file.name} is too large. Max size is 1MB.`);
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert(`File ${file.name} is too large. Max size is 5MB.`);
                           return false;
                         }
                         return true;
@@ -663,8 +663,8 @@ export function ActivityList({
                         return;
                       }
 
-                      if (file.size > 1024 * 1024) {
-                        alert(`File ${file.name} is too large. Max size is 1MB.`);
+                      if (file.size > 5 * 1024 * 1024) {
+                        alert(`File ${file.name} is too large. Max size is 5MB.`);
                         return;
                       }
 
