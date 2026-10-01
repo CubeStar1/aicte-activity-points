@@ -52,7 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Pencil, X, GripVertical, Table2 } from "lucide-react";
+import { Plus, Trash2, Pencil, X, GripVertical, Table2, Loader2 } from "lucide-react";
 import {
   FormFillerData,
   Activity,
@@ -62,31 +62,42 @@ import {
 import { nanoid } from "nanoid";
 import { differenceInDays, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
 import useUser from "@/hooks/use-user";
+import { toast } from "sonner";
+import {
+  MAX_UPLOAD_MB,
+  UPLOAD_ACCEPT,
+  UPLOAD_HINT,
+  validateUpload,
+} from "@/lib/upload-limits";
 import { BulkEditDialog } from "./bulk-edit-dialog";
 import { SortableTableRow } from "./sortable-row";
 
 
-const uploadFile = async (file: File, userId: string) => {
-  const supabase = createSupabaseBrowser();
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${nanoid()}.${fileExt}`;
-  const filePath = `${userId}/${fileName}`;
+const uploadFile = async (file: File) => {
+  const body = new FormData();
+  body.append("file", file);
 
-  const { error: uploadError } = await supabase.storage
-    .from("activity-evidence")
-    .upload(filePath, file);
-
-  if (uploadError) {
-    throw uploadError;
+  let res: Response;
+  try {
+    res = await fetch("/api/upload", { method: "POST", body });
+  } catch {
+    throw new Error("Network error. Check your connection and try again.");
   }
 
-  const { data } = supabase.storage
-    .from("activity-evidence")
-    .getPublicUrl(filePath);
+  // The host can reject a request before it reaches the route, with a non-JSON body.
+  const data = await res.json().catch(() => null);
 
-  return data.publicUrl;
+  if (!res.ok || !data?.url) {
+    throw new Error(
+      data?.error ||
+        (res.status === 413
+          ? `Larger than ${MAX_UPLOAD_MB} MB.`
+          : "Upload failed. Please try again.")
+    );
+  }
+
+  return data.url as string;
 };
 
 interface ActivityListProps {
@@ -137,6 +148,100 @@ export function ActivityList({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(0);
+  const [uploadingCertificate, setUploadingCertificate] = useState(false);
+  const isUploading = uploadingPhotos > 0 || uploadingCertificate;
+
+  // Uploads every valid file and reports each rejected or failed one by name.
+  const uploadFiles = async (files: File[]) => {
+    const failed: string[] = [];
+    const valid = files.filter((file) => {
+      const invalid = validateUpload(file);
+      if (invalid) failed.push(`${file.name}: ${invalid}`);
+      return !invalid;
+    });
+
+    const results = await Promise.allSettled(valid.map(uploadFile));
+    const urls: string[] = [];
+    results.forEach((result, i) => {
+      if (result.status === "fulfilled") {
+        urls.push(result.value);
+      } else {
+        console.error("Error uploading file", result.reason);
+        failed.push(`${valid[i].name}: ${result.reason.message}`);
+      }
+    });
+
+    if (failed.length > 0) {
+      toast.error(
+        failed.length === 1 ? "Upload failed" : `${failed.length} uploads failed`,
+        {
+          description: failed.join("\n"),
+          descriptionClassName: "whitespace-pre-line",
+          duration: 8000,
+        }
+      );
+    }
+    return urls;
+  };
+
+  const handlePhotoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    const input = e.target;
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+
+    if (!user?.id) {
+      toast.error("Please log in to upload images.");
+      input.value = "";
+      return;
+    }
+
+    setUploadingPhotos(files.length);
+    try {
+      const urls = await uploadFiles(files);
+      if (urls.length > 0) {
+        const currentPhotos = getValues(`activities.${index}.photos`) || [];
+        setValue(`activities.${index}.photos`, [...currentPhotos, ...urls]);
+        toast.success(
+          `${urls.length} photo${urls.length === 1 ? "" : "s"} uploaded`
+        );
+      }
+    } finally {
+      setUploadingPhotos(0);
+      input.value = "";
+    }
+  };
+
+  const handleCertificateUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!user?.id) {
+      toast.error("Please log in to upload certificate.");
+      input.value = "";
+      return;
+    }
+
+    setUploadingCertificate(true);
+    try {
+      const [url] = await uploadFiles([file]);
+      if (url) {
+        setValue(`activities.${index}.certificateImage`, url);
+        setValue(`activities.${index}.certificateAttached`, true);
+        toast.success("Certificate uploaded");
+      }
+    } finally {
+      setUploadingCertificate(false);
+      input.value = "";
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -583,49 +688,22 @@ export function ActivityList({
 
                 <Input
                   type="file"
-                  accept="image/*"
+                  accept={UPLOAD_ACCEPT}
                   multiple
+                  disabled={uploadingPhotos > 0}
                   className="cursor-pointer"
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 0) {
-                      if (!user?.id) {
-                        alert("Please log in to upload images.");
-                        return;
-                      }
-
-                      const validFiles = files.filter(file => {
-                        if (file.size > 1024 * 1024) {
-                          alert(`File ${file.name} is too large. Max size is 1MB.`);
-                          return false;
-                        }
-                        return true;
-                      });
-
-                      if (validFiles.length === 0) return;
-
-                      try {
-                        const uploadedUrls = await Promise.all(
-                          validFiles.map(async (file) => {
-                            return await uploadFile(file, user.id);
-                          })
-                        );
-
-                        const currentPhotos = getValues(`activities.${editingIndex}.photos`) || [];
-                        setValue(`activities.${editingIndex}.photos`, [...currentPhotos, ...uploadedUrls]);
-
-
-                        e.target.value = "";
-                      } catch (err) {
-                        console.error("Error uploading files", err);
-                        alert("Error uploading images. Please try again.");
-                      }
-                    }
-                  }}
+                  onChange={(e) => handlePhotoUpload(e, editingIndex)}
                 />
-                <div className="text-xs text-muted-foreground mt-1">
-                  {(activities?.[editingIndex]?.photos || []).length} photos attached
-                </div>
+                {uploadingPhotos > 0 ? (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Uploading {uploadingPhotos} photo{uploadingPhotos === 1 ? "" : "s"}...
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {UPLOAD_HINT} each. {(activities?.[editingIndex]?.photos || []).length} photos attached
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -653,43 +731,30 @@ export function ActivityList({
 
                 <Input
                   type="file"
-                  accept="image/*"
+                  accept={UPLOAD_ACCEPT}
+                  disabled={uploadingCertificate}
                   className="cursor-pointer"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      if (!user?.id) {
-                        alert("Please log in to upload certificate.");
-                        return;
-                      }
-
-                      if (file.size > 1024 * 1024) {
-                        alert(`File ${file.name} is too large. Max size is 1MB.`);
-                        return;
-                      }
-
-                      try {
-                        const url = await uploadFile(file, user.id);
-                        setValue(`activities.${editingIndex}.certificateImage`, url);
-
-                        setValue(`activities.${editingIndex}.certificateAttached`, true);
-
-
-                        e.target.value = "";
-                      } catch (err) {
-                        console.error("Error uploading file", err);
-                        alert("Error uploading certificate. Please try again.");
-                      }
-                    }
-                  }}
+                  onChange={(e) => handleCertificateUpload(e, editingIndex)}
                 />
-                {activities?.[editingIndex]?.certificateImage && (
-                  <div className="text-xs text-green-600 mt-1">Certificate attached</div>
+                {uploadingCertificate ? (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Uploading certificate...
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {UPLOAD_HINT}.
+                    {activities?.[editingIndex]?.certificateImage && (
+                      <span className="text-green-600"> Certificate attached</span>
+                    )}
+                  </div>
                 )}
               </div>
 
               <div className="flex justify-end pt-4">
-                <Button onClick={() => setIsDialogOpen(false)}>Done</Button>
+                <Button onClick={() => setIsDialogOpen(false)} disabled={isUploading}>
+                  {isUploading ? "Uploading..." : "Done"}
+                </Button>
               </div>
             </div>
           )}

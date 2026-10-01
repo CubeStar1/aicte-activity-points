@@ -1,6 +1,7 @@
 export const protectedPaths = [
     "/",
-    "/form-filler"
+    "/form-filler",
+    "/dashboard"
 ];
 export const authPaths = [
     "/register",
