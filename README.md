@@ -1,42 +1,60 @@
 # AICTE Activity Points Report Generator
 
-A tool for generating AICTE Activity Points forms for RVCE students
+A tool for generating AICTE Activity Points forms for RVCE students. Fill in your activities, attach photos and certificates, and download the finished report as a PDF.
+
+It runs entirely on your own machine. For the hosted version, visit [AICTE Activity Points](https://aicte-activity-points.vercel.app).
 
 ## Getting Started
+
+You need [Node.js](https://nodejs.org) 18.18 or newer.
 
 1. **Clone the repository**
 
    ```bash
    git clone https://github.com/CubeStar1/aicte-activity-points.git
+   cd aicte-activity-points
    ```
 
-2. **Setup Services**
+2. **Turn on local mode**
 
-   - Create a project on [Supabase](https://supabase.com)
-   - Create an account on [Resend](https://resend.com) for email services
-
-3. **Run Database Migration**
-
-   Copy the contents of `lib/supabase/migrations/schema.sql` and run it in the Supabase SQL Editor to set up the database schema and storage buckets.
-
-4. **Setup Environment Variables**
-
-   Copy the example environment file to `.env.local` and configure the keys using credentials from Supabase and Resend:
+   Create a file named `.env.local` in the project folder with this line:
 
    ```bash
-   cp env.example .env.local
+   NEXT_PUBLIC_LOCAL_MODE=true
    ```
 
-5. **Install dependencies**
+3. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-6. **Run the development server**
+4. **Run the app**
 
    ```bash
    npm run dev
    ```
 
-7. Open [http://localhost:3000](http://localhost:3000) with your browser.
+5. Open [http://localhost:3000/form-filler](http://localhost:3000/form-filler) in your browser.
+
+## Where your data is kept
+
+Everything stays in the `.local-data` folder inside the project:
+
+| Path | Contents |
+| --- | --- |
+| `.local-data/form.json` | Your form: student details, activities and signatories |
+| `.local-data/uploads/` | The photos and certificates you attached |
+
+Photos and certificates must be JPG or PNG, up to 2 MB each.
+
+## Filling the form with a coding agent
+
+A coding agent (Claude Code, Cursor, Codex and others) can fill in the form for you over MCP, working from a folder of your notes, photos and certificates.
+
+With the app running, open [http://localhost:3000/connect](http://localhost:3000/connect). It gives you the command to add the server to your agent and a prompt to paste in.
+```bash
+claude mcp add --transport http aicte-activity-points http://localhost:3000/api/mcp
+```
+
+Keep the app running while the agent works, then reload the form page to see its changes. Check what it wrote before you download the PDF.
