@@ -10,7 +10,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { RefreshCw, Loader2, Github, Eye } from "lucide-react";
+import { RefreshCw, Loader2, Github, Eye, Bot } from "lucide-react";
 
 import {
   Sheet,
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { FormFillerData } from "@/lib/types/form-filler";
 import dynamic from "next/dynamic";
-import { format, differenceInDays, parseISO } from "date-fns";
+import Link from "next/link";
 import { ActivityList } from "@/components/form-filler/activity-list";
 import { FormSectionHeader } from "@/components/form-filler/form-section-header";
 import { StudentInfoForm } from "@/components/form-filler/student-info-form";
@@ -32,6 +32,7 @@ import { DownloadPDFButton } from "@/components/form-filler/download-pdf-button"
 import { loadFormData, saveFormData, migrateLocalStorageData } from "@/lib/supabase/form-persistence";
 import useUser from "@/hooks/use-user";
 import { toast } from "sonner";
+import { emptyFormData, totalPoints as sumPoints, withDerived } from "@/lib/forms/derive";
 
 const PDFPreview = dynamic(
   () =>
@@ -82,6 +83,13 @@ const FormContent = ({
             }
           >
             <Github className="w-5 h-5" />
+          </Button>
+
+          <Button variant="ghost" size="sm" className="gap-2" asChild>
+            <Link href="/connect">
+              <Bot className="w-5 h-5" />
+              <span className="hidden sm:inline">Connect agent</span>
+            </Link>
           </Button>
         </div>
         <div className="flex items-center gap-2">
@@ -156,105 +164,46 @@ export default function FormFillerPage() {
 
 
   const form = useForm<FormFillerData>({
-    defaultValues: {
-      student: {
-        name: "",
-        usn: "",
-        department: "",
-        period: "2022-2026",
-        totalPoints: 0,
-      },
-      activities: [],
-      evaluations: [],
-      signatories: {
-        evaluator1: { name: "", designation: "" },
-        evaluator2: { name: "", designation: "" },
-        counsellor: { name: "", designation: "" },
-      },
-    },
+    defaultValues: emptyFormData(),
   });
 
   const { watch, getValues, reset } = form;
 
-  const [previewData, setPreviewData] = useState<FormFillerData>({
-    student: {
-      name: "",
-      usn: "",
-      department: "",
-      period: "2022-2026",
-      totalPoints: 0,
-    },
-    activities: [],
-    evaluations: [],
-    signatories: {
-      evaluator1: { name: "", designation: "" },
-      evaluator2: { name: "", designation: "" },
-      counsellor: { name: "", designation: "" },
-    },
-  });
+  const [previewData, setPreviewData] = useState<FormFillerData>(emptyFormData);
+
+  // `updated_at` of the row as this tab last saw it (null: no row yet), so a
+  // save can tell when the form was changed elsewhere in the meantime.
+  const loadedAt = useRef<string | null>(null);
 
   const [isGenerating, setIsGenerating] = useState(false);
 
   const activities = watch("activities");
-  const totalPoints = activities.reduce(
-    (sum, act) => sum + (act.pointsEarned || 0),
-    0
-  );
+  const totalPoints = sumPoints(activities);
 
   const handleGeneratePreview = useCallback((data?: FormFillerData) => {
     const values = data || getValues();
 
-    // Save to database if user is authenticated
-    if (user) {
-      saveFormData(values).then(({ success, error }) => {
+    // Save to database if user is authenticated. Freshly loaded data is
+    // already what the database holds, so only the user's own edits are saved.
+    if (user && !data) {
+      saveFormData(values, loadedAt.current).then(({ success, error, conflict, updatedAt }) => {
         if (success) {
+          loadedAt.current = updatedAt ?? loadedAt.current;
           toast.success("Form saved");
+        } else if (conflict) {
+          toast.error("Not saved: this form was changed somewhere else", {
+            description:
+              "For example by your coding agent or another tab. Reload to get the latest version; changes made here since then will be lost.",
+            duration: Infinity,
+            action: { label: "Reload", onClick: () => window.location.reload() },
+          });
         } else {
           toast.error("Failed to save: " + error);
         }
       });
     }
 
-    const currentTotalPoints = values.activities.reduce(
-      (sum, act) => sum + (act.pointsEarned || 0),
-      0
-    );
-
-    const newPreviewData: FormFillerData = {
-      student: {
-        ...values.student,
-        totalPoints: currentTotalPoints,
-      },
-      activities: values.activities,
-      evaluations: values.activities.map((act, idx) => {
-        let durationStr = "";
-        if (act.startDate && act.endDate) {
-          try {
-            const start = parseISO(act.startDate);
-            const end = parseISO(act.endDate);
-            const days = differenceInDays(end, start) + 1;
-            durationStr = `${format(start, "dd-MM-yy")} to ${format(
-              end,
-              "dd-MM-yy"
-            )}, ${days} day${days > 1 ? "s" : ""}`;
-          } catch (e) {
-            console.error("Date parsing error", e);
-          }
-        }
-
-        return {
-          slNo: idx + 1,
-          nameOfStudent: values.student.name,
-          usn: values.student.usn,
-          typeOfWork: act.name,
-          duration: durationStr,
-          hoursSpent: act.hoursSpent,
-          certificateAvailable: act.certificateAttached,
-          pointsEarned: act.pointsEarned,
-        };
-      }),
-      signatories: values.signatories,
-    };
+    const newPreviewData = withDerived(values);
 
     setIsGenerating(true);
     setTimeout(() => {
@@ -274,7 +223,8 @@ export default function FormFillerPage() {
       await migrateLocalStorageData();
 
       // Load from database
-      const { data: dbData, error } = await loadFormData();
+      const { data: dbData, updatedAt, error } = await loadFormData();
+      loadedAt.current = updatedAt ?? null;
       if (dbData) {
         reset(dbData);
         handleGeneratePreview(dbData);
