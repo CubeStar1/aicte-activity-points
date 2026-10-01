@@ -43,3 +43,6 @@ node_modules
 exports
 supabase
 scripts
+
+# local mode data (NEXT_PUBLIC_LOCAL_MODE)
+.local-data

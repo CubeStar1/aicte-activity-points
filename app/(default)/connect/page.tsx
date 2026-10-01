@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AGENT_PROMPT } from "@/lib/mcp/agent-prompt";
 import type { McpTokenInfo } from "@/lib/mcp/tokens";
+import { LOCAL_MODE } from "@/lib/local/mode";
 
 const TOKEN_PLACEHOLDER = "<your-token>";
 
@@ -72,7 +73,7 @@ export default function ConnectPage() {
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    loadTokens();
+    if (!LOCAL_MODE) loadTokens();
   }, [loadTokens]);
 
   const createToken = async (e: React.FormEvent) => {
@@ -124,6 +125,7 @@ export default function ConnectPage() {
         description="Let a coding agent (Claude Code, Cursor, Codex and others) fill in your activity points form over MCP: add activities, upload photos and certificates, and check for gaps. You then download the PDF here as usual."
       />
 
+      {!LOCAL_MODE && (
       <Card>
         <CardHeader>
           <CardTitle>1. Create an access token</CardTitle>
@@ -190,12 +192,15 @@ export default function ConnectPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
-          <CardTitle>2. Add the server to your agent</CardTitle>
+          <CardTitle>{LOCAL_MODE ? "1" : "2"}. Add the server to your agent</CardTitle>
           <CardDescription>
-            {newToken
+            {LOCAL_MODE
+              ? "This app is running in local mode, so no access token is needed. Keep it running while your agent works."
+              : newToken
               ? "These snippets include the token you just created."
               : `Replace ${TOKEN_PLACEHOLDER} with a token from step 1.`}
           </CardDescription>
@@ -210,7 +215,9 @@ export default function ConnectPage() {
             <TabsContent value="claude" className="space-y-2">
               <p className="text-sm text-muted-foreground">Run this in a terminal:</p>
               <CopyBlock
-                value={`claude mcp add --transport http aicte-activity-points ${mcpUrl} --header "Authorization: Bearer ${token}"`}
+                value={`claude mcp add --transport http aicte-activity-points ${mcpUrl}${
+                  LOCAL_MODE ? "" : ` --header "Authorization: Bearer ${token}"`
+                }`}
               />
             </TabsContent>
             <TabsContent value="cursor" className="space-y-2">
@@ -223,7 +230,9 @@ export default function ConnectPage() {
                     mcpServers: {
                       "aicte-activity-points": {
                         url: mcpUrl,
-                        headers: { Authorization: `Bearer ${token}` },
+                        ...(LOCAL_MODE
+                          ? {}
+                          : { headers: { Authorization: `Bearer ${token}` } }),
                       },
                     },
                   },
@@ -235,9 +244,11 @@ export default function ConnectPage() {
             <TabsContent value="other" className="space-y-2">
               <p className="text-sm text-muted-foreground">
                 Any agent that supports remote MCP servers over Streamable HTTP works.
-                Give it this URL and header:
+                Give it this URL{LOCAL_MODE ? "" : " and header"}:
               </p>
-              <CopyBlock value={`${mcpUrl}\nAuthorization: Bearer ${token}`} />
+              <CopyBlock
+                value={LOCAL_MODE ? mcpUrl : `${mcpUrl}\nAuthorization: Bearer ${token}`}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -245,7 +256,7 @@ export default function ConnectPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>3. Give your agent this prompt</CardTitle>
+          <CardTitle>{LOCAL_MODE ? "2" : "3"}. Give your agent this prompt</CardTitle>
           <CardDescription>
             Put your notes, photos and certificates in one folder, open your agent in
             that folder, and paste this prompt. It works as it is; add anything

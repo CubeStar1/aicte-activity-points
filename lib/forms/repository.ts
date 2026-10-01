@@ -1,4 +1,6 @@
 import supabaseAdmin from "@/lib/supabase/admin";
+import { LOCAL_MODE } from "@/lib/local/mode";
+import { readLocalForm, writeLocalForm } from "@/lib/local/store";
 import { FormFillerData } from "@/lib/types/form-filler";
 import { emptyFormData, totalPoints } from "./derive";
 
@@ -32,6 +34,8 @@ const normalize = (data: Partial<FormFillerData> | null): FormFillerData => {
 };
 
 async function readRow(userId: string) {
+  if (LOCAL_MODE) return readLocalForm();
+
   const { data: row, error } = await supabaseAdmin()
     .from("activity_forms")
     .select("form_data, updated_at")
@@ -56,8 +60,6 @@ export async function mutateForm<T>(
   userId: string,
   mutate: (form: FormFillerData) => T
 ): Promise<T> {
-  const supabase = supabaseAdmin();
-
   for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt += 1) {
     const row = await readRow(userId);
     const form = normalize(row?.form_data ?? null);
@@ -67,6 +69,13 @@ export async function mutateForm<T>(
       activity.slNo = idx + 1;
     });
     form.student.totalPoints = totalPoints(form.activities);
+
+    if (LOCAL_MODE) {
+      if (writeLocalForm(form, row?.updated_at ?? null)) return result;
+      continue;
+    }
+
+    const supabase = supabaseAdmin();
 
     if (!row) {
       const { error } = await supabase

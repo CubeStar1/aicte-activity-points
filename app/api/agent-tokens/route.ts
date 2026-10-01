@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { LOCAL_MODE } from "@/lib/local/mode";
 import {
   MAX_TOKENS_PER_USER,
   createToken,
@@ -14,6 +15,9 @@ const loggedOut = () =>
   );
 
 async function currentUserId() {
+  // Local mode has no tokens: the MCP endpoint is open.
+  if (LOCAL_MODE) return null;
+
   const supabase = await createSupabaseServer();
   const {
     data: { user },

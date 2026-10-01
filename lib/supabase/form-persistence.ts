@@ -1,5 +1,6 @@
 import { createSupabaseBrowser } from "./client";
 import { FormFillerData } from "../types/form-filler";
+import { LOCAL_MODE } from "../local/mode";
 
 export interface ActivityForm {
   id: string;
@@ -18,6 +19,33 @@ export interface SaveResult {
   updatedAt?: string;
 }
 
+// Local mode: the form lives in a file on this machine, behind /api/local/form.
+async function saveLocalFormData(
+  formData: FormFillerData,
+  loadedAt?: string | null
+): Promise<SaveResult> {
+  const res = await fetch("/api/local/form", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ formData, loadedAt }),
+  });
+  const body = await res.json().catch(() => null);
+
+  if (res.status === 409) return { success: false, conflict: true };
+  if (!res.ok || !body?.updatedAt) {
+    return { success: false, error: body?.error || `Save failed (${res.status})` };
+  }
+  return { success: true, updatedAt: body.updatedAt };
+}
+
+async function loadLocalFormData(): Promise<{ data?: FormFillerData; updatedAt?: string; error?: string }> {
+  const res = await fetch("/api/local/form", { cache: "no-store" });
+  if (!res.ok) return { error: `Load failed (${res.status})` };
+
+  const body = await res.json();
+  return { data: body.data ?? undefined, updatedAt: body.updatedAt ?? undefined };
+}
+
 /**
  * Save form data to Supabase
  * Creates new entry if doesn't exist, updates if exists
@@ -31,6 +59,8 @@ export async function saveFormData(
   loadedAt?: string | null
 ): Promise<SaveResult> {
   try {
+    if (LOCAL_MODE) return await saveLocalFormData(formData, loadedAt);
+
     const supabase = createSupabaseBrowser();
     
     // Get current user
@@ -97,6 +127,8 @@ export async function saveFormData(
  */
 export async function loadFormData(): Promise<{ data?: FormFillerData; updatedAt?: string; error?: string }> {
   try {
+    if (LOCAL_MODE) return await loadLocalFormData();
+
     const supabase = createSupabaseBrowser();
     
     // Get current user

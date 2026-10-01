@@ -1,7 +1,17 @@
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { authPaths } from "@/lib/constants";
+import { LOCAL_MODE } from "@/lib/local/mode";
 
 export async function middleware(request: NextRequest) {
+	if (LOCAL_MODE) {
+		// Nobody to sign in: every page is open, and the auth pages have no use.
+		if (authPaths.includes(request.nextUrl.pathname)) {
+			return NextResponse.redirect(new URL("/form-filler", request.url));
+		}
+		return NextResponse.next();
+	}
+
 	return await updateSession(request);
 }
 

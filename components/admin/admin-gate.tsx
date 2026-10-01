@@ -20,6 +20,10 @@ const MESSAGES: Record<
     title: "Not authorised",
     body: "Your account is not on the admin list for this deployment.",
   },
+  "local-mode": {
+    title: "Not available in local mode",
+    body: "The admin dashboard lists every student's form from the database. In local mode there is only your own form, on this machine.",
+  },
 };
 
 export function AdminGate({

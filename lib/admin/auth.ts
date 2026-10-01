@@ -1,4 +1,5 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { LOCAL_MODE } from "@/lib/local/mode";
 
 /**
  * Admins are configured by email in `ADMIN_EMAILS` (comma separated). There is
@@ -22,9 +23,12 @@ export function isAdminEmail(email: string | null | undefined): boolean {
 
 export type AdminCheck =
   | { ok: true; email: string; userId: string }
-  | { ok: false; reason: "unauthenticated" | "not-configured" | "forbidden" };
+  | { ok: false; reason: "unauthenticated" | "not-configured" | "forbidden" | "local-mode" };
 
 export async function checkAdmin(): Promise<AdminCheck> {
+  // The dashboard lists every account's form; local mode has no accounts.
+  if (LOCAL_MODE) return { ok: false, reason: "local-mode" };
+
   const supabase = await createSupabaseServer();
   const {
     data: { user },
