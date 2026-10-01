@@ -39,3 +39,6 @@ next-env.d.ts
 .vscode
 certificates
 node_modules
+
+exports
+supabase
