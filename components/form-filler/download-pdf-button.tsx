@@ -43,20 +43,17 @@ export function DownloadPDFButton({ data }: DownloadPDFButtonProps) {
   };
 
   return (
-    <Button 
+    <Button
       onClick={handleDownload}
-      disabled={isGenerating} 
-      size="sm" 
-      variant="outline" 
-      className="gap-2"
+      disabled={isGenerating}
+      size="sm"
+      variant="outline"
+      aria-label="Download PDF"
     >
-      {isGenerating ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
-      ) : (
-        <Download className="w-4 h-4" />
-      )}
-      <span className="hidden sm:inline">{isGenerating ? "Generating..." : "Download PDF"}</span>
-      <span className="sr-only">Download</span>
+      {isGenerating ? <Loader2 className="animate-spin" /> : <Download />}
+      <span className="hidden @xl:inline md:@[480px]:inline">
+        {isGenerating ? "Generating..." : "Download PDF"}
+      </span>
     </Button>
   );
 }

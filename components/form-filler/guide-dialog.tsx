@@ -7,17 +7,27 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { BookOpen, RefreshCw } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { BookOpen, Save } from "lucide-react";
 
 export const GuideDialog = () => {
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2 font-bold text-lg">
-          <BookOpen className="w-5 h-5" />
-          Guide
-        </Button>
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="sm" aria-label="Guide">
+              <BookOpen />
+              <span className="hidden md:@[640px]:inline">Guide</span>
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Guide</TooltipContent>
+      </Tooltip>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>How to use this tool</DialogTitle>
@@ -32,7 +42,7 @@ export const GuideDialog = () => {
             <li>
               <strong>Important:</strong> Click the{" "}
               <span className="font-semibold inline-flex items-center gap-1">
-                <RefreshCw className="w-3 h-3" /> Generate Preview
+                <Save className="w-3 h-3" /> Save & Generate Preview
               </span>{" "}
               button to save your changes and update the PDF.
             </li>

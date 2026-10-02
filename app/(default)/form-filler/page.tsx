@@ -10,7 +10,13 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { RefreshCw, Loader2, Github, Eye, Bot } from "lucide-react";
+import { Save, Loader2, Eye, Sparkles } from "lucide-react";
+import { SiGithub } from "react-icons/si";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import {
   Sheet,
@@ -67,69 +73,86 @@ const FormContent = ({
   const { register, setValue, control, getValues } = form;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <GuideDialog />
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="@container">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            <GuideDialog />
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() =>
-              window.open(
-                "https://github.com/CubeStar1/aicte-activity-points",
-                "_blank"
-              )
-            }
-          >
-            <Github className="w-5 h-5" />
-          </Button>
-
-          <Button variant="ghost" size="sm" className="gap-2" asChild>
-            <Link href="/connect">
-              <Bot className="w-5 h-5" />
-              <span className="hidden sm:inline">Connect agent</span>
-            </Link>
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-2">
-                  <Eye className="w-4 h-4" />
-                  <span>Preview</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" asChild>
+                  <a
+                    href="https://github.com/CubeStar1/aicte-activity-points"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="View source on GitHub"
+                  >
+                    <SiGithub />
+                    <span className="hidden md:@[720px]:inline">GitHub</span>
+                  </a>
                 </Button>
-              </SheetTrigger>
-              <SheetContent side="bottom" className="h-[90vh] p-0">
-                <SheetHeader className="p-4 border-b">
-                  <SheetTitle>PDF Preview</SheetTitle>
-                </SheetHeader>
-                <div className="h-full bg-muted/50 p-4 overflow-hidden">
-                  {pdfContent}
-                </div>
-              </SheetContent>
-            </Sheet>
+              </TooltipTrigger>
+              <TooltipContent>View source on GitHub</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-500/15 dark:hover:text-violet-300"
+                  asChild
+                >
+                  <Link href="/connect" aria-label="Connect agent">
+                    <Sparkles />
+                    <span className="hidden md:@[640px]:inline">Connect agent</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Connect agent</TooltipContent>
+            </Tooltip>
           </div>
 
-          <DownloadPDFButton data={previewData} />
+          <div className="flex items-center gap-2">
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="sm" variant="outline" aria-label="Preview PDF">
+                    <Eye />
+                    <span className="hidden @[340px]:inline">Preview</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[90vh] p-0">
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle>PDF Preview</SheetTitle>
+                  </SheetHeader>
+                  <div className="h-full bg-muted/50 p-4 overflow-hidden">
+                    {pdfContent}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
 
-          <Button
-            onClick={() => handleGeneratePreview()}
-            size="sm"
-            className="gap-2"
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
-            <span className="hidden sm:inline">
-              {isGenerating ? "Saving & Generating..." : "Save & Generate Preview"}
-            </span>
-            <span className="sr-only">{isGenerating ? "..." : "Generate"}</span>
-          </Button>
+            <DownloadPDFButton data={previewData} />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => handleGeneratePreview()}
+                  size="sm"
+                  disabled={isGenerating}
+                  aria-label="Save & Generate Preview"
+                >
+                  {isGenerating ? <Loader2 className="animate-spin" /> : <Save />}
+                  <span className="hidden @[480px]:inline md:@sm:inline">
+                    {isGenerating ? "Saving & Generating..." : "Save & Generate Preview"}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Save & Generate Preview</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </div>
 
@@ -247,7 +270,7 @@ export default function FormFillerPage() {
     <div className="h-[calc(100vh)] bg-background">
       {/* Mobile Layout */}
       <div className="block md:hidden h-full">
-        <ScrollArea className="h-full">
+        <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:block!">
           <FormContent
             form={form}
             totalPoints={totalPoints}
@@ -263,7 +286,7 @@ export default function FormFillerPage() {
       <div className="hidden md:flex h-full">
         <ResizablePanelGroup direction="horizontal" className="h-full">
           <ResizablePanel defaultSize={45} minSize={30} maxSize={70}>
-            <ScrollArea className="h-full">
+            <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:block!">
               <FormContent
                 form={form}
                 totalPoints={totalPoints}

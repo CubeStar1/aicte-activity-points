@@ -46,3 +46,4 @@ scripts
 
 # local mode data (NEXT_PUBLIC_LOCAL_MODE)
 .local-data
+docs
