@@ -14,15 +14,15 @@ import {
 } from "@/components/ui/tooltip";
 import { BookOpen, Save } from "lucide-react";
 
-export const GuideDialog = () => {
+export const GuideDialog = ({ className }: { className?: string }) => {
   return (
     <Dialog>
       <Tooltip>
         <TooltipTrigger asChild>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" aria-label="Guide">
+            <Button variant="ghost" size="sm" className={className} aria-label="Guide">
               <BookOpen />
-              <span className="hidden md:@[640px]:inline">Guide</span>
+              <span className="hidden @[760px]:inline">Guide</span>
             </Button>
           </DialogTrigger>
         </TooltipTrigger>
@@ -42,7 +42,7 @@ export const GuideDialog = () => {
             <li>
               <strong>Important:</strong> Click the{" "}
               <span className="font-semibold inline-flex items-center gap-1">
-                <Save className="w-3 h-3" /> Save & Generate Preview
+                <Save className="w-3 h-3" /> Save & Preview
               </span>{" "}
               button to save your changes and update the PDF.
             </li>

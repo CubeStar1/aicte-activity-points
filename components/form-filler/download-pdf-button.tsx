@@ -9,9 +9,10 @@ import { type WorkerType } from "./pdf.worker";
 
 interface DownloadPDFButtonProps {
   data: FormFillerData;
+  className?: string;
 }
 
-export function DownloadPDFButton({ data }: DownloadPDFButtonProps) {
+export function DownloadPDFButton({ data, className }: DownloadPDFButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownload = async () => {
@@ -48,10 +49,11 @@ export function DownloadPDFButton({ data }: DownloadPDFButtonProps) {
       disabled={isGenerating}
       size="sm"
       variant="outline"
+      className={className}
       aria-label="Download PDF"
     >
       {isGenerating ? <Loader2 className="animate-spin" /> : <Download />}
-      <span className="hidden @xl:inline md:@[480px]:inline">
+      <span className="hidden @[620px]:inline">
         {isGenerating ? "Generating..." : "Download PDF"}
       </span>
     </Button>

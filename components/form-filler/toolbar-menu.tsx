@@ -17,8 +17,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import useUser from "@/hooks/use-user";
+import { cn } from "@/lib/utils";
 
-export function ToolbarMenu() {
+export function ToolbarMenu({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const { data: user } = useUser();
   const router = useRouter();
@@ -35,7 +36,12 @@ export function ToolbarMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8" aria-label="Menu">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("size-8", className)}
+          aria-label="Menu"
+        >
           {isSigningOut ? <Loader2 className="animate-spin" /> : <Menu />}
         </Button>
       </DropdownMenuTrigger>
