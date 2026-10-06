@@ -62,7 +62,9 @@ const glassGhost =
 const glassChip =
   "rounded-full border-black/10 bg-white/50 shadow-none hover:bg-white/90 dark:border-white/10 dark:bg-white/10 dark:hover:bg-white/20";
 const fitNav = "w-8 px-0 has-[>svg]:px-0 @[760px]:w-auto @[760px]:px-3 @[760px]:has-[>svg]:px-3";
-const fitPreview = "w-8 px-0 has-[>svg]:px-0 @[540px]:w-auto @[540px]:px-3 @[540px]:has-[>svg]:px-3";
+// Preview keeps a small label on phones, since an eye icon alone is ambiguous.
+const fitPreview =
+  "w-8 gap-1 px-0 text-xs has-[>svg]:px-0 @[350px]:w-auto @[350px]:px-2.5 @[350px]:has-[>svg]:px-2.5 @[540px]:gap-1.5 @[540px]:px-3 @[540px]:text-sm @[540px]:has-[>svg]:px-3";
 const fitDownload = "w-8 px-0 has-[>svg]:px-0 @[620px]:w-auto @[620px]:px-3 @[620px]:has-[>svg]:px-3";
 const fitSave = "w-8 px-0 has-[>svg]:px-0 @[460px]:w-auto @[460px]:px-3 @[460px]:has-[>svg]:px-3";
 
@@ -144,7 +146,7 @@ const FormContent = ({
                     aria-label="Preview PDF"
                   >
                     <Eye />
-                    <span className="hidden @[540px]:inline">Preview</span>
+                    <span className="hidden @[350px]:inline">Preview</span>
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="h-[90vh] p-0">
