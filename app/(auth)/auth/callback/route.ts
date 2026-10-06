@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { type CookieOptions, createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -14,21 +14,28 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
+          getAll() {
+            return cookieStore.getAll()
           },
-          set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set({ name, value, ...options })
-          },
-          remove(name: string, options: CookieOptions) {
-            cookieStore.delete({ name, ...options })
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
           },
         },
       }
     )
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    return NextResponse.redirect(`${origin}${next}`)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+    console.error('OAuth code exchange failed:', error.message)
   }
 
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  // The user cancelled at the provider, or the code could not be exchanged.
+  const reason = searchParams.get('error') === 'access_denied' ? 'cancelled' : 'oauth'
+  const signin = new URL('/signin', origin)
+  signin.searchParams.set('error', reason)
+  if (next !== '/') signin.searchParams.set('next', next)
+  return NextResponse.redirect(signin)
 }

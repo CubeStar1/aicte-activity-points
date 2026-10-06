@@ -1,12 +1,10 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { protectedPaths, authPaths } from "@/lib/constants";
 
 export async function updateSession(request: NextRequest) {
-	let response = NextResponse.next({
-		request: {
-			headers: request.headers,
-		},
+	let supabaseResponse = NextResponse.next({
+		request,
 	});
 
 	const supabase = createServerClient(
@@ -14,61 +12,59 @@ export async function updateSession(request: NextRequest) {
 		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 		{
 			cookies: {
-				get(name: string) {
-					return request.cookies.get(name)?.value;
+				getAll() {
+					return request.cookies.getAll();
 				},
-				set(name: string, value: string, options: CookieOptions) {
-					request.cookies.set({
-						name,
-						value,
-						...options,
+				setAll(cookiesToSet, headers) {
+					cookiesToSet.forEach(({ name, value }) =>
+						request.cookies.set(name, value)
+					);
+					supabaseResponse = NextResponse.next({
+						request,
 					});
-					response = NextResponse.next({
-						request: {
-							headers: request.headers,
-						},
-					});
-					response.cookies.set({
-						name,
-						value,
-						...options,
-					});
-				},
-				remove(name: string, options: CookieOptions) {
-					request.cookies.set({
-						name,
-						value: "",
-						...options,
-					});
-					response = NextResponse.next({
-						request: {
-							headers: request.headers,
-						},
-					});
-					response.cookies.set({
-						name,
-						value: "",
-						...options,
-					});
+					cookiesToSet.forEach(({ name, value, options }) =>
+						supabaseResponse.cookies.set(name, value, options)
+					);
+					Object.entries(headers).forEach(([key, value]) =>
+						supabaseResponse.headers.set(key, value)
+					);
 				},
 			},
 		}
 	);
 
-	const user = await supabase.auth.getUser();
+	// Do not run code between createServerClient and getClaims(): it is the
+	// call that refreshes an expired token and writes the new cookies.
+	const { data } = await supabase.auth.getClaims();
+	const userId = data?.claims?.sub;
+
+	// A redirect is a new response, so it has to carry over the refreshed
+	// cookies; otherwise the browser keeps a token the server already rotated.
+	const redirect = (url: URL) => {
+		const redirectResponse = NextResponse.redirect(url);
+		supabaseResponse.cookies
+			.getAll()
+			.forEach((cookie) => redirectResponse.cookies.set(cookie));
+		for (const header of ["cache-control", "expires", "pragma"]) {
+			const value = supabaseResponse.headers.get(header);
+			if (value) redirectResponse.headers.set(header, value);
+		}
+		return redirectResponse;
+	};
+
 	const url = new URL(request.url);
 	const next = url.searchParams.get("next");
-	if (user.data.user?.id) {
+	if (userId) {
 		if (authPaths.includes(url.pathname)) {
-			return NextResponse.redirect(new URL("/", request.url));
+			return redirect(new URL("/", request.url));
 		}
-		return response;
+		return supabaseResponse;
 	} else {
 		if (protectedPaths.includes(url.pathname)) {
-			return NextResponse.redirect(
+			return redirect(
 				new URL("/signin?next=" + (next || url.pathname), request.url)
 			);
 		}
-		return response;
+		return supabaseResponse;
 	}
 }

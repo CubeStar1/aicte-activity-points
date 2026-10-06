@@ -19,6 +19,8 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { createSupabaseBrowser } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -31,7 +33,19 @@ const FormSchema = z.object({
     message: 'Password is too short',
   }),
 })
-export default function SignIn() {
+const signInErrors: Record<string, { title: string; description: string }> = {
+  oauth: {
+    title: "We couldn't sign you in",
+    description: 'Something went wrong while finishing sign-in. Please try again.',
+  },
+  cancelled: {
+    title: 'Sign-in was cancelled',
+    description: 'You left the sign-in screen before it finished. Try again when you are ready.',
+  },
+}
+
+export default function SignIn({ error }: { error?: string }) {
+  const signInError = error ? signInErrors[error] : undefined
   const queryString = typeof window !== 'undefined' ? window?.location.search : ''
   const urlParams = new URLSearchParams(queryString)
   const appName = process.env.NEXT_PUBLIC_APP_NAME!
@@ -53,6 +67,13 @@ export default function SignIn() {
           <h1 className="font-bold">Sign in to {appName}</h1>
           <p className="text-sm">Welcome back! Please sign in to continue</p>
         </div>
+        {signInError && (
+          <Alert variant="destructive">
+            <AlertCircle />
+            <AlertTitle>{signInError.title}</AlertTitle>
+            <AlertDescription>{signInError.description}</AlertDescription>
+          </Alert>
+        )}
         <Social redirectTo={next || '/'} />
         <div className="flex items-center gap-5">
           <div className="flex-1 h-[0.5px] w-full bg-zinc-400 dark:bg-zinc-800"></div>
