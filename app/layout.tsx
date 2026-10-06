@@ -6,6 +6,7 @@ import QueryProvider from "@/components/global/query-provider";
 import { Toaster } from '@/components/ui/sonner';
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
+import ClarityIdentify from '@/components/global/clarity-identify'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -38,6 +39,7 @@ export default function RootLayout({
               {children}
             </ThemeProvider>
              <Analytics />
+             <ClarityIdentify />
           <Script id="clarity-script" strategy="afterInteractive">
             {`
             (function(c,l,a,r,i,t,y){
