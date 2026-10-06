@@ -22,18 +22,8 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -51,8 +41,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Pencil, X, GripVertical, Table2, Loader2 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Plus, X, Table2, Loader2, ListPlus, Rows3, LayoutGrid } from "lucide-react";
 import {
   FormFillerData,
   Activity,
@@ -61,8 +58,8 @@ import {
 } from "@/lib/types/form-filler";
 import { nanoid } from "nanoid";
 import { differenceInDays, parseISO } from "date-fns";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import useUser from "@/hooks/use-user";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
   MAX_UPLOAD_MB,
@@ -71,8 +68,36 @@ import {
   validateUpload,
 } from "@/lib/upload-limits";
 import { BulkEditDialog } from "./bulk-edit-dialog";
+import { ActivityCard } from "./activity-card";
+import { FormSectionHeader } from "./form-section-header";
 import { SortableTableRow } from "./sortable-row";
 
+type ActivityView = "table" | "cards";
+const VIEW_STORAGE_KEY = "form-filler:activity-view";
+
+const readSavedView = (key: string): ActivityView | null => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved === "table" || saved === "cards" ? saved : null;
+  } catch {
+    return null;
+  }
+};
+
+const DialogSection = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <section className="space-y-4 border-t pt-5 first:border-t-0 first:pt-0">
+    <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      {title}
+    </h4>
+    {children}
+  </section>
+);
 
 const uploadFile = async (file: File) => {
   const body = new FormData();
@@ -148,6 +173,22 @@ export function ActivityList({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  // Cards by default on mobile, table on desktop; a choice is remembered
+  // separately for each so one doesn't override the other.
+  const isMobile = useIsMobile();
+  const viewKey = `${VIEW_STORAGE_KEY}:${isMobile ? "mobile" : "desktop"}`;
+  const [chosenView, setChosenView] = useState<Record<string, ActivityView>>({});
+  const view: ActivityView =
+    chosenView[viewKey] ?? readSavedView(viewKey) ?? (isMobile ? "cards" : "table");
+
+  const changeView = (next: ActivityView) => {
+    setChosenView((prev) => ({ ...prev, [viewKey]: next }));
+    try {
+      localStorage.setItem(viewKey, next);
+    } catch {
+      // Storage unavailable; the choice just won't persist.
+    }
+  };
   const [uploadingPhotos, setUploadingPhotos] = useState(0);
   const [uploadingCertificate, setUploadingCertificate] = useState(false);
   const isUploading = uploadingPhotos > 0 || uploadingCertificate;
@@ -321,146 +362,120 @@ export function ActivityList({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Activities ({fields.length})</h2>
-        <div className="flex gap-2">
+    <div>
+      <FormSectionHeader
+        title="Activity Details" />
+
+      <div className="flex items-center justify-between gap-2 pb-3">
+        <div className="flex items-center gap-3">
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={view}
+            onValueChange={(value) => value && changeView(value as ActivityView)}
+            aria-label="Activity layout"
+          >
+            <ToggleGroupItem value="table" aria-label="Table view">
+              <Rows3 />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="cards" aria-label="Card view">
+              <LayoutGrid />
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {fields.length} {fields.length === 1 ? "activity" : "activities"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
           <Button
             type="button"
             onClick={() => setBulkEditOpen(true)}
             size="sm"
             variant="outline"
             disabled={fields.length === 0}
+            aria-label="Bulk edit"
           >
-            <Table2 className="w-4 h-4 mr-2" />
-            Bulk Edit
+            <Table2 />
+            <span className="hidden @md:inline">Bulk edit</span>
           </Button>
-          <Button type="button" onClick={addActivity} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Activity
+          <Button type="button" onClick={addActivity} size="sm" aria-label="Add activity">
+            <Plus />
+            <span className="hidden @sm:inline">Add activity</span>
           </Button>
         </div>
       </div>
 
-      {/* Mobile View - Cards */}
-      <div className="space-y-4 md:hidden">
-        {fields.length === 0 ? (
-          <div className="text-center p-6 text-muted-foreground border rounded-md border-dashed">
-            No activities added. Tap "Add Activity" to start.
+      {fields.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-10 text-center">
+          <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <ListPlus className="size-5" />
           </div>
-        ) : (
-          fields.map((field, index) => {
-            const activity = activities?.[index] || {};
-            const dateRange =
-              activity.startDate && activity.endDate
-                ? `${activity.startDate} to ${activity.endDate}`
-                : "-";
-
-            return (
-              <Card key={field.id} className="overflow-hidden">
-                <CardHeader className="p-4 bg-muted/50 pb-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="font-semibold text-base line-clamp-2">
-                      {activity.name || "Untitled Activity"}
-                    </div>
-                    <div className="flex shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => editActivity(index)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => deleteActivity(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4 pt-2 text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Semester:</span>
-                    <span>{activity.semester || "-"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Points:</span>
-                    <span className="font-medium">{activity.pointsEarned || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Dates:</span>
-                    <span>{dateRange}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
-
-      {/* Desktop View - Table */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="hidden md:block border rounded-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Sl.</TableHead>
-                <TableHead className="w-[100px]">Activity Name</TableHead>
-                <TableHead>Dates</TableHead>
-                <TableHead>Sem</TableHead>
-                <TableHead>Points</TableHead>
-                <TableHead className="text-right w-12">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fields.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center h-24 text-muted-foreground"
-                  >
-                    No activities added. Click "Add Activity" to start.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <SortableContext
-                  items={fields.map((f) => f.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {fields.map((field, index) => {
-                    const activity = activities?.[index] || {};
-                    const dateRange =
-                      activity.startDate && activity.endDate
-                        ? `${activity.startDate} to ${activity.endDate}`
-                        : "-";
-
-                    return (
+          <div>
+            <p className="font-medium">No activities yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add each activity you took part in. You need 100 points in total.
+            </p>
+          </div>
+          <Button type="button" onClick={addActivity} size="sm">
+            <Plus />
+            Add activity
+          </Button>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={fields.map((f) => f.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {view === "table" ? (
+              <div className="overflow-hidden rounded-xl border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead className="w-16 pl-4">Sl.</TableHead>
+                      <TableHead>Activity</TableHead>
+                      <TableHead>Dates</TableHead>
+                      <TableHead className="text-center">Sem</TableHead>
+                      <TableHead className="text-right">Points</TableHead>
+                      <TableHead className="w-20 pr-4 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fields.map((field, index) => (
                       <SortableTableRow
                         key={field.id}
                         id={field.id}
                         index={index}
-                        activity={activity}
-                        dateRange={dateRange}
+                        activity={activities?.[index] || {}}
                         onEdit={() => editActivity(index)}
                         onDelete={() => deleteActivity(index)}
                       />
-                    );
-                  })}
-                </SortableContext>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </DndContext>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <ol className="space-y-2">
+                {fields.map((field, index) => (
+                  <ActivityCard
+                    key={field.id}
+                    id={field.id}
+                    index={index}
+                    activity={activities?.[index] || {}}
+                    onEdit={() => editActivity(index)}
+                    onDelete={() => deleteActivity(index)}
+                  />
+                ))}
+              </ol>
+            )}
+          </SortableContext>
+        </DndContext>
+      )}
 
       <BulkEditDialog
         open={bulkEditOpen}
@@ -470,8 +485,8 @@ export function ActivityList({
       />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+          <DialogHeader className="border-b px-6 py-4">
             <DialogTitle>
               {editingIndex >= 0
                 ? `Edit Activity ${editingIndex + 1}`
@@ -480,283 +495,295 @@ export function ActivityList({
           </DialogHeader>
 
           {editingIndex >= 0 && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+            <>
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              <DialogSection title="Basics">
                 <div className="space-y-2">
-                  <Label>Semester</Label>
+                  <Label>Activity Name</Label>
+                  <Input
+                    {...register(`activities.${editingIndex}.name`)}
+                    placeholder="e.g., Blood Donation Camp"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  <div className="col-span-2 space-y-2 sm:col-span-1">
+                    <Label>Semester</Label>
+                    <Select
+                      onValueChange={(value) =>
+                        setValue(`activities.${editingIndex}.semester`, value)
+                      }
+                      defaultValue={getValues(`activities.${editingIndex}.semester`)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SEMESTERS.map((sem) => (
+                          <SelectItem key={sem} value={sem}>
+                            Sem {sem}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Hours Spent</Label>
+                    <Input
+                      type="number"
+                      {...register(`activities.${editingIndex}.hoursSpent`, {
+                        valueAsNumber: true,
+                      })}
+                      placeholder="e.g. 50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Points</Label>
+                    <Input
+                      type="number"
+                      {...register(`activities.${editingIndex}.pointsEarned`, {
+                        valueAsNumber: true,
+                      })}
+                      placeholder="10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>AICTE Category</Label>
                   <Select
-                    onValueChange={(value) =>
-                      setValue(`activities.${editingIndex}.semester`, value)
+                    onValueChange={(value) => {
+                      if (value === "__manual__") {
+                        setValue(`activities.${editingIndex}.aicteMapping`, "");
+                      } else {
+                        setValue(`activities.${editingIndex}.aicteMapping`, value);
+                      }
+                    }}
+                    value={
+                      (AICTE_CATEGORIES as readonly string[]).includes(getValues(`activities.${editingIndex}.aicteMapping`))
+                        ? getValues(`activities.${editingIndex}.aicteMapping`)
+                        : "__manual__"
                     }
-                    defaultValue={getValues(`activities.${editingIndex}.semester`)}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select AICTE Category" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {SEMESTERS.map((sem) => (
-                        <SelectItem key={sem} value={sem}>
-                          Sem {sem}
+                    <SelectContent className="max-h-[300px]">
+                      {AICTE_CATEGORIES.map((category, idx) => (
+                        <SelectItem key={idx} value={category}>
+                          <div className="flex items-start gap-2">
+                            <span className="text-muted-foreground shrink-0">{idx + 1}.</span>
+                            <span className="line-clamp-2">{category}</span>
+                          </div>
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Hours Spent</Label>
-                  <Input
-                    type="number"
-                    {...register(`activities.${editingIndex}.hoursSpent`, {
-                      valueAsNumber: true,
-                    })}
-                    placeholder="e.g. 50"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Points</Label>
-                <Input
-                  type="number"
-                  {...register(`activities.${editingIndex}.pointsEarned`, {
-                    valueAsNumber: true,
-                  })}
-                  placeholder="10"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Activity Name</Label>
-                <Input
-                  {...register(`activities.${editingIndex}.name`)}
-                  placeholder="e.g., Blood Donation Camp"
-                />
-              </div>
-
-
-              <div className="space-y-2">
-                <Label>AICTE Category</Label>
-                <Select
-                  onValueChange={(value) => {
-                    if (value === "__manual__") {
-                      setValue(`activities.${editingIndex}.aicteMapping`, "");
-                    } else {
-                      setValue(`activities.${editingIndex}.aicteMapping`, value);
-                    }
-                  }}
-                  value={
-                    (AICTE_CATEGORIES as readonly string[]).includes(getValues(`activities.${editingIndex}.aicteMapping`))
-                      ? getValues(`activities.${editingIndex}.aicteMapping`)
-                      : "__manual__"
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select AICTE Category" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {AICTE_CATEGORIES.map((category, idx) => (
-                      <SelectItem key={idx} value={category}>
+                      <SelectItem value="__manual__">
                         <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground shrink-0">{idx + 1}.</span>
-                          <span className="line-clamp-2">{category}</span>
+                          <span className="text-muted-foreground shrink-0">✏️</span>
+                          <span className="font-medium">Other (Enter Manually)</span>
                         </div>
                       </SelectItem>
-                    ))}
-                    <SelectItem value="__manual__">
-                      <div className="flex items-start gap-2">
-                        <span className="text-muted-foreground shrink-0">✏️</span>
-                        <span className="font-medium">Other (Enter Manually)</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {!(AICTE_CATEGORIES as readonly string[]).includes(getValues(`activities.${editingIndex}.aicteMapping`)) && (
-                  <Input
-                    {...register(`activities.${editingIndex}.aicteMapping`)}
-                    placeholder="Enter custom AICTE category..."
-                    className="mt-2"
-                  />
-                )}
-              </div>
-
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Start Date</Label>
-                  <Input
-                    type="date"
-                    {...register(`activities.${editingIndex}.startDate`, {
-                      onChange: (e) =>
-                        handleDateChange(editingIndex, "startDate", e.target.value),
-                    })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Input
-                    type="date"
-                    {...register(`activities.${editingIndex}.endDate`, {
-                      onChange: (e) =>
-                        handleDateChange(editingIndex, "endDate", e.target.value),
-                    })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Place</Label>
-                <Input
-                  {...register(`activities.${editingIndex}.place`)}
-                  placeholder="RVCE Campus"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Detailed Report Page No</Label>
-                <Input
-                  {...register(`activities.${editingIndex}.detailedReportPageNo`)}
-                  placeholder="e.g. 1-2"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Certificate Available</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setValue(
-                      `activities.${editingIndex}.certificateAttached`,
-                      value === "yes"
-                    )
-                  }
-                  value={activities?.[editingIndex]?.certificateAttached ? "yes" : "no"}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yes">Yes</SelectItem>
-                    <SelectItem value="no">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  {...register(`activities.${editingIndex}.description`)}
-                  placeholder="Describe the activity..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Outcomes</Label>
-                <Textarea
-                  {...register(`activities.${editingIndex}.outcomes`)}
-                  placeholder="What did you learn?"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Activity Photos</Label>
-
-
-                {(activities?.[editingIndex]?.photos || []).length > 0 && (
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    {activities?.[editingIndex]?.photos?.map((photo, pIdx) => (
-                      <div key={pIdx} className="relative group border rounded-md overflow-hidden aspect-video bg-muted">
-                        <img
-                          src={photo}
-                          alt={`Photo ${pIdx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const currentPhotos = getValues(`activities.${editingIndex}.photos`) || [];
-                            const newPhotos = currentPhotos.filter((_, i) => i !== pIdx);
-                            setValue(`activities.${editingIndex}.photos`, newPhotos);
-                          }}
-                          className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <Input
-                  type="file"
-                  accept={UPLOAD_ACCEPT}
-                  multiple
-                  disabled={uploadingPhotos > 0}
-                  className="cursor-pointer"
-                  onChange={(e) => handlePhotoUpload(e, editingIndex)}
-                />
-                {uploadingPhotos > 0 ? (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Uploading {uploadingPhotos} photo{uploadingPhotos === 1 ? "" : "s"}...
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {UPLOAD_HINT} each. {(activities?.[editingIndex]?.photos || []).length} photos attached
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Certificate Image</Label>
-
-                {activities?.[editingIndex]?.certificateImage ? (
-                  <div className="relative group border rounded-md overflow-hidden aspect-[4/3] bg-muted w-1/2 mb-2">
-                    <img
-                      src={activities[editingIndex].certificateImage!}
-                      alt="Certificate"
-                      className="w-full h-full object-contain"
+                    </SelectContent>
+                  </Select>
+                  {!(AICTE_CATEGORIES as readonly string[]).includes(getValues(`activities.${editingIndex}.aicteMapping`)) && (
+                    <Input
+                      {...register(`activities.${editingIndex}.aicteMapping`)}
+                      placeholder="Enter custom AICTE category..."
+                      className="mt-2"
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setValue(`activities.${editingIndex}.certificateImage`, "");
-                        setValue(`activities.${editingIndex}.certificateAttached`, false);
-                      }}
-                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  )}
+                </div>
+              </DialogSection>
+
+              <DialogSection title="When and where">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Input
+                      type="date"
+                      {...register(`activities.${editingIndex}.startDate`, {
+                        onChange: (e) =>
+                          handleDateChange(editingIndex, "startDate", e.target.value),
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Input
+                      type="date"
+                      {...register(`activities.${editingIndex}.endDate`, {
+                        onChange: (e) =>
+                          handleDateChange(editingIndex, "endDate", e.target.value),
+                      })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Place</Label>
+                  <Input
+                    {...register(`activities.${editingIndex}.place`)}
+                    placeholder="RVCE Campus"
+                  />
+                </div>
+              </DialogSection>
+
+              <DialogSection title="Report">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Report Page No</Label>
+                    <Input
+                      {...register(`activities.${editingIndex}.detailedReportPageNo`)}
+                      placeholder="e.g. 1-2"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Certificate Available</Label>
+                    <Select
+                      onValueChange={(value) =>
+                        setValue(
+                          `activities.${editingIndex}.certificateAttached`,
+                          value === "yes"
+                        )
+                      }
+                      value={activities?.[editingIndex]?.certificateAttached ? "yes" : "no"}
                     >
-                      <X className="w-3 h-3" />
-                    </button>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                ) : null}
+                </div>
 
-                <Input
-                  type="file"
-                  accept={UPLOAD_ACCEPT}
-                  disabled={uploadingCertificate}
-                  className="cursor-pointer"
-                  onChange={(e) => handleCertificateUpload(e, editingIndex)}
-                />
-                {uploadingCertificate ? (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Uploading certificate...
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {UPLOAD_HINT}.
-                    {activities?.[editingIndex]?.certificateImage && (
-                      <span className="text-green-600"> Certificate attached</span>
-                    )}
-                  </div>
-                )}
-              </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    {...register(`activities.${editingIndex}.description`)}
+                    placeholder="Describe the activity..."
+                  />
+                </div>
 
-              <div className="flex justify-end pt-4">
-                <Button onClick={() => setIsDialogOpen(false)} disabled={isUploading}>
-                  {isUploading ? "Uploading..." : "Done"}
-                </Button>
-              </div>
+                <div className="space-y-2">
+                  <Label>Outcomes</Label>
+                  <Textarea
+                    {...register(`activities.${editingIndex}.outcomes`)}
+                    placeholder="What did you learn?"
+                  />
+                </div>
+              </DialogSection>
+
+              <DialogSection title="Attachments">
+                <div className="space-y-2">
+                  <Label>Activity Photos</Label>
+
+                  {(activities?.[editingIndex]?.photos || []).length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      {activities?.[editingIndex]?.photos?.map((photo, pIdx) => (
+                        <div key={pIdx} className="relative group border rounded-md overflow-hidden aspect-video bg-muted">
+                          <img
+                            src={photo}
+                            alt={`Photo ${pIdx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            aria-label={`Remove photo ${pIdx + 1}`}
+                            onClick={() => {
+                              const currentPhotos = getValues(`activities.${editingIndex}.photos`) || [];
+                              const newPhotos = currentPhotos.filter((_, i) => i !== pIdx);
+                              setValue(`activities.${editingIndex}.photos`, newPhotos);
+                            }}
+                            className="absolute top-1 right-1 bg-destructive text-white rounded-full p-1 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Input
+                    type="file"
+                    accept={UPLOAD_ACCEPT}
+                    multiple
+                    disabled={uploadingPhotos > 0}
+                    className="cursor-pointer"
+                    onChange={(e) => handlePhotoUpload(e, editingIndex)}
+                  />
+                  {uploadingPhotos > 0 ? (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Uploading {uploadingPhotos} photo{uploadingPhotos === 1 ? "" : "s"}...
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {UPLOAD_HINT} each. {(activities?.[editingIndex]?.photos || []).length} photos attached
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Certificate Image</Label>
+
+                  {activities?.[editingIndex]?.certificateImage ? (
+                    <div className="relative group border rounded-md overflow-hidden aspect-[4/3] bg-muted w-1/2 mb-2">
+                      <img
+                        src={activities[editingIndex].certificateImage!}
+                        alt="Certificate"
+                        className="w-full h-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Remove certificate"
+                        onClick={() => {
+                          setValue(`activities.${editingIndex}.certificateImage`, "");
+                          setValue(`activities.${editingIndex}.certificateAttached`, false);
+                        }}
+                        className="absolute top-1 right-1 bg-destructive text-white rounded-full p-1 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <Input
+                    type="file"
+                    accept={UPLOAD_ACCEPT}
+                    disabled={uploadingCertificate}
+                    className="cursor-pointer"
+                    onChange={(e) => handleCertificateUpload(e, editingIndex)}
+                  />
+                  {uploadingCertificate ? (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Uploading certificate...
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {UPLOAD_HINT}.
+                      {activities?.[editingIndex]?.certificateImage && (
+                        <span className="text-emerald-600 dark:text-emerald-400"> Certificate attached</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </DialogSection>
+
             </div>
+
+            <div className="flex justify-end border-t px-6 py-3">
+              <Button onClick={() => setIsDialogOpen(false)} disabled={isUploading}>
+                {isUploading ? "Uploading..." : "Done"}
+              </Button>
+            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

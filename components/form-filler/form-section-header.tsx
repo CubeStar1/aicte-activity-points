@@ -6,8 +6,8 @@ interface FormSectionHeaderProps {
 
 export function FormSectionHeader({ title }: FormSectionHeaderProps) {
   return (
-    <div className="space-y-4 pb-4">
-      <h3 className="text-2xl font-medium">{title}</h3>
+    <div className="space-y-3 pb-4">
+      <h3 className="text-2xl font-medium tracking-tight">{title}</h3>
       <Separator />
     </div>
   );

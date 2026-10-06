@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ResizablePanelGroup,
@@ -25,21 +24,22 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { FormFillerData } from "@/lib/types/form-filler";
+import { Activity, FormFillerData } from "@/lib/types/form-filler";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ActivityList } from "@/components/form-filler/activity-list";
-import { FormSectionHeader } from "@/components/form-filler/form-section-header";
+import { PointsSummary } from "@/components/form-filler/points-summary";
 import { StudentInfoForm } from "@/components/form-filler/student-info-form";
 import { SignatoriesForm } from "@/components/form-filler/signatories-form";
 import { GuideDialog } from "@/components/form-filler/guide-dialog";
+import { ToolbarMenu } from "@/components/form-filler/toolbar-menu";
 import { MobileNoticeDialog } from "@/components/form-filler/mobile-notice-dialog";
 
 import { DownloadPDFButton } from "@/components/form-filler/download-pdf-button";
 import { loadFormData, saveFormData, migrateLocalStorageData } from "@/lib/supabase/form-persistence";
 import useUser from "@/hooks/use-user";
 import { toast } from "sonner";
-import { emptyFormData, totalPoints as sumPoints, withDerived } from "@/lib/forms/derive";
+import { emptyFormData, withDerived } from "@/lib/forms/derive";
 
 const PDFPreview = dynamic(
   () =>
@@ -56,7 +56,7 @@ const PDFPreview = dynamic(
 
 interface FormContentProps {
   form: UseFormReturn<FormFillerData>;
-  totalPoints: number;
+  activities: Activity[];
   handleGeneratePreview: () => void;
   isGenerating: boolean;
   pdfContent?: React.ReactNode;
@@ -65,7 +65,7 @@ interface FormContentProps {
 
 const FormContent = ({
   form,
-  totalPoints,
+  activities,
   handleGeneratePreview,
   isGenerating,
   pdfContent,
@@ -74,10 +74,11 @@ const FormContent = ({
   const { register, setValue, control, getValues } = form;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div className="@container">
+    <div>
+      <div className="@container sticky top-0 z-20 border-b bg-background/85 px-4 py-2.5 backdrop-blur md:px-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1">
+            <ToolbarMenu />
             <GuideDialog />
 
             <Tooltip>
@@ -157,27 +158,26 @@ const FormContent = ({
         </div>
       </div>
 
-      <StudentInfoForm
-        register={register}
-        setValue={setValue}
-        totalPoints={totalPoints}
-      />
+      <div className="@container">
+        <div className="mx-auto max-w-3xl space-y-8 px-4 pt-5 pb-10 md:px-6">
+          <PointsSummary activities={activities} />
 
-      <div>
-        <FormSectionHeader title="Activity Details" />
-        <Card>
-          <CardContent className="pt-0">
-            <ActivityList
-              control={control}
-              register={register}
-              setValue={setValue}
-              getValues={getValues}
-            />
-          </CardContent>
-        </Card>
+          <StudentInfoForm
+            control={control}
+            register={register}
+            setValue={setValue}
+          />
+
+          <ActivityList
+            control={control}
+            register={register}
+            setValue={setValue}
+            getValues={getValues}
+          />
+
+          <SignatoriesForm register={register} />
+        </div>
       </div>
-
-      <SignatoriesForm register={register} />
     </div>
   );
 };
@@ -202,7 +202,6 @@ export default function FormFillerPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const activities = watch("activities");
-  const totalPoints = sumPoints(activities);
 
   const handleGeneratePreview = useCallback((data?: FormFillerData) => {
     const values = data || getValues();
@@ -276,7 +275,7 @@ export default function FormFillerPage() {
         <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:block!">
           <FormContent
             form={form}
-            totalPoints={totalPoints}
+            activities={activities}
             handleGeneratePreview={() => handleGeneratePreview()}
             isGenerating={isGenerating}
             pdfContent={<PDFPreview data={previewData} />}
@@ -292,7 +291,7 @@ export default function FormFillerPage() {
             <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:block!">
               <FormContent
                 form={form}
-                totalPoints={totalPoints}
+                activities={activities}
                 handleGeneratePreview={() => handleGeneratePreview()}
                 isGenerating={isGenerating}
                 pdfContent={<PDFPreview data={previewData} />}
