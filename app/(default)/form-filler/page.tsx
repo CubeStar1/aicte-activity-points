@@ -33,6 +33,7 @@ import { FormSectionHeader } from "@/components/form-filler/form-section-header"
 import { StudentInfoForm } from "@/components/form-filler/student-info-form";
 import { SignatoriesForm } from "@/components/form-filler/signatories-form";
 import { GuideDialog } from "@/components/form-filler/guide-dialog";
+import { MobileNoticeDialog } from "@/components/form-filler/mobile-notice-dialog";
 
 import { DownloadPDFButton } from "@/components/form-filler/download-pdf-button";
 import { loadFormData, saveFormData, migrateLocalStorageData } from "@/lib/supabase/form-persistence";
@@ -268,6 +269,8 @@ export default function FormFillerPage() {
 
   return (
     <div className="h-[calc(100vh)] bg-background">
+      <MobileNoticeDialog />
+
       {/* Mobile Layout */}
       <div className="block md:hidden h-full">
         <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:block!">
