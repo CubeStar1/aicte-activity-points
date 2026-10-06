@@ -11,6 +11,7 @@ export interface ActivityFormRow {
 export interface AuthUserLite {
   id: string;
   email?: string | null;
+  created_at?: string | null;
   last_sign_in_at?: string | null;
   email_confirmed_at?: string | null;
 }
@@ -63,6 +64,7 @@ export interface StudentSummary {
 
   createdAt: string;
   updatedAt: string;
+  signedUpAt: string;
   lastSignInAt: string;
   emailConfirmedAt: string;
 }

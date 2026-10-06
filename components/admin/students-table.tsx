@@ -30,6 +30,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Meter } from "@/components/admin/charts";
+import { POINTS_TARGET } from "@/lib/admin/analytics";
+import { formatDate } from "@/lib/admin/format";
 import type { StudentSummary } from "@/lib/admin/student-summary.mjs";
 
 type SortKey =
@@ -42,6 +45,7 @@ type SortKey =
   | "updatedAt";
 
 type Completeness = "all" | "complete" | "incomplete";
+type Progress = "all" | "reached" | "below" | "none";
 
 const SORT_LABELS: Record<SortKey, string> = {
   usn: "USN",
@@ -64,22 +68,11 @@ function compare(a: StudentSummary, b: StudentSummary, key: SortKey) {
   });
 }
 
-function formatDate(value: string) {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toLocaleDateString(undefined, {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-}
-
 export function StudentsTable({ students }: { students: StudentSummary[] }) {
   const [query, setQuery] = useState("");
   const [department, setDepartment] = useState("all");
   const [completeness, setCompleteness] = useState<Completeness>("all");
+  const [progress, setProgress] = useState<Progress>("all");
   const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -96,6 +89,9 @@ export function StudentsTable({ students }: { students: StudentSummary[] }) {
       if (department !== "all" && student.department !== department) return false;
       if (completeness === "complete" && !student.isComplete) return false;
       if (completeness === "incomplete" && student.isComplete) return false;
+      if (progress === "reached" && student.computedPoints < POINTS_TARGET) return false;
+      if (progress === "below" && student.computedPoints >= POINTS_TARGET) return false;
+      if (progress === "none" && student.computedPoints > 0) return false;
       if (!needle) return true;
 
       return [student.usn, student.name, student.email, student.department, student.userId]
@@ -104,7 +100,7 @@ export function StudentsTable({ students }: { students: StudentSummary[] }) {
     });
 
     return filtered.sort((a, b) => (sortAsc ? 1 : -1) * compare(a, b, sortKey));
-  }, [students, query, department, completeness, sortKey, sortAsc]);
+  }, [students, query, department, completeness, progress, sortKey, sortAsc]);
 
   function toggleSort(key: SortKey) {
     if (key === sortKey) {
@@ -172,6 +168,21 @@ export function StudentsTable({ students }: { students: StudentSummary[] }) {
                 <SelectItem value="all">Any status</SelectItem>
                 <SelectItem value="complete">Complete</SelectItem>
                 <SelectItem value="incomplete">Incomplete</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={progress}
+              onValueChange={(value) => setProgress(value as Progress)}
+            >
+              <SelectTrigger className="w-full sm:w-[170px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any points</SelectItem>
+                <SelectItem value="reached">Reached {POINTS_TARGET}</SelectItem>
+                <SelectItem value="below">Below {POINTS_TARGET}</SelectItem>
+                <SelectItem value="none">No points yet</SelectItem>
               </SelectContent>
             </Select>
 
@@ -248,6 +259,12 @@ export function StudentsTable({ students }: { students: StudentSummary[] }) {
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
                     {student.computedPoints}
+                    <Meter
+                      value={student.computedPoints}
+                      max={POINTS_TARGET}
+                      label={`Points towards ${POINTS_TARGET}`}
+                      className="ml-auto mt-1 h-1 w-16"
+                    />
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {student.activityCount}
