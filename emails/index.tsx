@@ -14,23 +14,31 @@ import {
 import * as React from "react";
 interface StocksEmailProps {
   verificationCode?: string;
+  purpose?: "signup" | "reset";
 }
 export default function StocksEmail({
   verificationCode = "596853",
+  purpose = "signup",
 }: StocksEmailProps) {
   const appName = process.env.NEXT_PUBLIC_APP_NAME!;
+  const isReset = purpose === "reset";
   return (
     <Html>
       <Head />
-      <Preview>{appName} - Verify Your Email</Preview>
+      <Preview>
+        {appName} - {isReset ? "Reset Your Password" : "Verify Your Email"}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={coverSection}>
             <Section style={upperSection}>
-              <Heading style={h1}>Verify your email address</Heading>
+              <Heading style={h1}>
+                {isReset ? "Reset your password" : "Verify your email address"}
+              </Heading>
               <Text style={mainText}>
-                Thanks for signing up for {appName}. To get started,
-                please verify your email address by entering the following code:
+                {isReset
+                  ? `We received a request to reset your ${appName} password. Enter the following code to choose a new one:`
+                  : `Thanks for signing up for ${appName}. To get started, please verify your email address by entering the following code:`}
               </Text>
               <Section style={verificationSection}>
                 <Text style={codeText}>{verificationCode}</Text>

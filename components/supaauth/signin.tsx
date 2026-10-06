@@ -38,6 +38,10 @@ const signInErrors: Record<string, { title: string; description: string }> = {
     title: "We couldn't sign you in",
     description: 'Something went wrong while finishing sign-in. Please try again.',
   },
+  link_expired: {
+    title: 'That link has expired',
+    description: 'Email links can only be used once and expire quickly. Request a new one.',
+  },
   cancelled: {
     title: 'Sign-in was cancelled',
     description: 'You left the sign-in screen before it finished. Try again when you are ready.',
@@ -136,7 +140,12 @@ export function SignInForm({ redirectTo }: { redirectTo: string }) {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-semibold">Password</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel className="text-sm font-semibold">Password</FormLabel>
+                <Link href="/forgot-password" className="text-sm text-blue-400">
+                  Forgot password?
+                </Link>
+              </div>
               <FormControl>
                 <div className=" relative">
                   <Input className="h-8" type={passwordReveal ? 'text' : 'password'} {...field} />

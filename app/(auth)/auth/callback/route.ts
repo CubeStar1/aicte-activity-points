@@ -32,8 +32,12 @@ export async function GET(request: Request) {
     console.error('OAuth code exchange failed:', error.message)
   }
 
-  // The user cancelled at the provider, or the code could not be exchanged.
-  const reason = searchParams.get('error') === 'access_denied' ? 'cancelled' : 'oauth'
+  const reason =
+    searchParams.get('error_code') === 'otp_expired'
+      ? 'link_expired'
+      : searchParams.get('error') === 'access_denied'
+        ? 'cancelled'
+        : 'oauth'
   const signin = new URL('/signin', origin)
   signin.searchParams.set('error', reason)
   if (next !== '/') signin.searchParams.set('next', next)
