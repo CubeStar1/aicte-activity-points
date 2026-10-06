@@ -52,7 +52,7 @@ export const GuideDialog = () => {
           <div className="p-4 bg-muted rounded-md text-sm">
             <p className="mb-2 font-semibold">Sample Report:</p>
             <p>
-              Please refer to this sampple report for more details
+              Please refer to this sample report for more details
             </p>
             <Button
               variant="link"
