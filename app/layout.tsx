@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ThemeProvider } from "@/components/global/theme-provider"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import QueryProvider from "@/components/global/query-provider";
 import { Toaster } from '@/components/ui/sonner';
 import Script from 'next/script'
@@ -36,7 +37,7 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {children}
+              <TooltipProvider>{children}</TooltipProvider>
             </ThemeProvider>
              <Analytics />
              <ClarityIdentify />

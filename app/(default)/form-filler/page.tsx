@@ -311,8 +311,8 @@ export default function FormFillerPage() {
 
       {/* Desktop Layout */}
       <div className="hidden md:flex h-full">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          <ResizablePanel defaultSize={45} minSize={30} maxSize={70}>
+        <ResizablePanelGroup orientation="horizontal" className="h-full">
+          <ResizablePanel defaultSize="45%" minSize="30%" maxSize="70%">
             <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:block!">
               <FormContent
                 form={form}
@@ -330,7 +330,7 @@ export default function FormFillerPage() {
 
           {/* The preview is an inset card, so the form's surface reads as
               continuing behind it. */}
-          <ResizablePanel defaultSize={55} minSize={30} maxSize={70}>
+          <ResizablePanel defaultSize="55%" minSize="30%" maxSize="70%">
             <div className="h-full py-2 pr-2">
               <div className="h-full overflow-hidden rounded-2xl border bg-muted shadow-sm">
                 <PDFPreview data={previewData} />
