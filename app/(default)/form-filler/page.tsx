@@ -149,11 +149,11 @@ const FormContent = ({
                     <span className="hidden @[350px]:inline">Preview</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="h-[90vh] p-0">
+                <SheetContent side="bottom" className="data-[side=bottom]:h-[90dvh] p-0">
                   <SheetHeader className="p-4 border-b">
                     <SheetTitle>PDF Preview</SheetTitle>
                   </SheetHeader>
-                  <div className="h-full bg-muted/50 p-4 overflow-hidden">
+                  <div className="min-h-0 flex-1 bg-muted/50 p-4 overflow-hidden">
                     {pdfContent}
                   </div>
                 </SheetContent>
