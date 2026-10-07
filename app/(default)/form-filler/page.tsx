@@ -153,7 +153,7 @@ const FormContent = ({
                   <SheetHeader className="p-4 border-b">
                     <SheetTitle>PDF Preview</SheetTitle>
                   </SheetHeader>
-                  <div className="min-h-0 flex-1 bg-muted/50 p-4 overflow-hidden">
+                  <div className="min-h-0 flex-1 bg-muted/50 overflow-hidden">
                     {pdfContent}
                   </div>
                 </SheetContent>
