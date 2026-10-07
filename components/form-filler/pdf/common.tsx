@@ -40,13 +40,7 @@ export const ActivityHeader = () => (
   </View>
 );
 
-export const ActivityFooter = ({
-  department,
-  pageOffset,
-}: {
-  department: string;
-  pageOffset: number;
-}) => (
+export const ActivityFooter = ({ department }: { department: string }) => (
   <View style={styles.activityFooter} fixed>
     <Text style={{ width: "30%" }}>AICTE Activity Points</Text>
     <View
@@ -59,11 +53,8 @@ export const ActivityFooter = ({
         justifyContent: "center",
       }}
     >
-      <Text
-        render={({ pageNumber }) => {
-          return `${pageNumber - pageOffset}`;
-        }}
-      />
+      {/* Position within the activity pages, so numbering starts at 1 here. */}
+      <Text render={({ subPageNumber }) => `${subPageNumber}`} />
     </View>
     <View style={{ width: "30%", alignItems: "flex-end" }}>
       <Text style={{ textAlign: "right" }}>Department of {department}</Text>

@@ -44,8 +44,16 @@ Font.register({
 
 Font.registerHyphenationCallback((word) => [word]);
 
-export const INDEX_ROWS_PER_PAGE = 7;
-export const EVALUATION_ROWS_PER_PAGE = 8;
+// The signature blocks sit in flow below the table rather than at a fixed page
+// position, so a long table can't run underneath them: if they don't fit they
+// move to the next page (see tableEnd). Growing into the leftover space and
+// aligning to its bottom still lands them at the foot of the page they end on.
+const signatureSectionFlow = {
+  flexGrow: 1,
+  alignItems: "flex-end",
+  marginTop: 10,
+  paddingBottom: 15,
+} as const;
 
 export const styles = StyleSheet.create({
   page: {
@@ -202,19 +210,29 @@ export const styles = StyleSheet.create({
     fontSize: 11,
   },
 
+  // The frame is drawn by the rows, not the table: a table split across pages
+  // is stretched to the bottom of the page, and its own border would trail
+  // down past the last row.
   table: {
     width: "100%",
-    borderWidth: 1,
-    borderColor: "#000",
+    flexGrow: 1,
+  },
+  // Unbreakable wrapper around the last row and the signatures, so signatures
+  // pushed to a new page take a row with them instead of sitting there alone.
+  tableEnd: {
+    flexGrow: 1,
   },
   tableRow: {
     flexDirection: "row",
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderBottomWidth: 1,
-    borderBottomColor: "#000",
+    borderColor: "#000",
   },
   tableHeader: {
     backgroundColor: "transparent",
     fontWeight: "bold",
+    borderTopWidth: 1,
   },
   tableCell: {
     padding: 5,
@@ -230,19 +248,13 @@ export const styles = StyleSheet.create({
   },
 
   hodSignatureSection: {
-    position: "absolute",
-    bottom: 80,
-    left: 30,
-    right: 30,
+    ...signatureSectionFlow,
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 30,
   },
   evaluatorSignatureSection: {
-    position: "absolute",
-    bottom: 80,
-    left: 30,
-    right: 30,
+    ...signatureSectionFlow,
     flexDirection: "row",
     justifyContent: "space-around",
   },
