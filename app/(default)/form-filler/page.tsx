@@ -167,7 +167,7 @@ const FormContent = ({
                 <Button
                   onClick={() => handleGeneratePreview()}
                   size="sm"
-                  className={cn("rounded-full bg-foreground text-background shadow-sm hover:bg-foreground/90", fitSave)}
+                  className={cn("rounded-full shadow-sm", fitSave)}
                   disabled={isGenerating}
                   aria-label="Save & Generate Preview"
                 >

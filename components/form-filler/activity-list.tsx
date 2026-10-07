@@ -372,7 +372,6 @@ export function ActivityList({
             type="single"
             variant="outline"
             size="sm"
-            spacing={0}
             value={view}
             onValueChange={(value) => value && changeView(value as ActivityView)}
             aria-label="Activity layout"
