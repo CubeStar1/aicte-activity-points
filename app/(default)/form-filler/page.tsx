@@ -149,11 +149,11 @@ const FormContent = ({
                     <span className="hidden @[350px]:inline">Preview</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="h-[90vh] p-0">
+                <SheetContent side="bottom" className="data-[side=bottom]:h-[90dvh] p-0">
                   <SheetHeader className="p-4 border-b">
                     <SheetTitle>PDF Preview</SheetTitle>
                   </SheetHeader>
-                  <div className="h-full bg-muted/50 p-4 overflow-hidden">
+                  <div className="min-h-0 flex-1 bg-muted/50 overflow-hidden">
                     {pdfContent}
                   </div>
                 </SheetContent>
@@ -167,7 +167,7 @@ const FormContent = ({
                 <Button
                   onClick={() => handleGeneratePreview()}
                   size="sm"
-                  className={cn("rounded-full shadow-sm", fitSave)}
+                  className={cn("h-8 gap-1.5 rounded-full px-3 shadow-sm", fitSave)}
                   disabled={isGenerating}
                   aria-label="Save & Generate Preview"
                 >
@@ -311,8 +311,8 @@ export default function FormFillerPage() {
 
       {/* Desktop Layout */}
       <div className="hidden md:flex h-full">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          <ResizablePanel defaultSize={45} minSize={30} maxSize={70}>
+        <ResizablePanelGroup orientation="horizontal" className="h-full">
+          <ResizablePanel defaultSize="45%" minSize="30%" maxSize="70%">
             <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:block!">
               <FormContent
                 form={form}
@@ -330,7 +330,7 @@ export default function FormFillerPage() {
 
           {/* The preview is an inset card, so the form's surface reads as
               continuing behind it. */}
-          <ResizablePanel defaultSize={55} minSize={30} maxSize={70}>
+          <ResizablePanel defaultSize="55%" minSize="30%" maxSize="70%">
             <div className="h-full py-2 pr-2">
               <div className="h-full overflow-hidden rounded-2xl border bg-muted shadow-sm">
                 <PDFPreview data={previewData} />

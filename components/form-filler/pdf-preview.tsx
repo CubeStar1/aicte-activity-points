@@ -3,7 +3,20 @@
 import { useState, useEffect, useRef } from "react";
 import { FormFillerData } from "@/lib/types/form-filler";
 import { wrap } from "comlink";
+import dynamic from "next/dynamic";
 import { type WorkerType } from "./pdf.worker";
+
+// pdf.js touches browser globals at import time, so it is loaded on the client only.
+const PDFCanvasViewer = dynamic(
+  () => import("./pdf-canvas-viewer").then((m) => m.PDFCanvasViewer),
+  { ssr: false }
+);
+
+// iOS, iPadOS and macOS browsers show only the first page of an embedded PDF and do not
+// scroll it. iPadOS reports itself as "Macintosh", so one pattern covers all three.
+function isApplePlatform() {
+  return /iPhone|iPad|iPod|Macintosh|Mac OS X/.test(navigator.userAgent);
+}
 
 interface PDFPreviewProps {
   data: FormFillerData;
@@ -15,6 +28,11 @@ export function PDFPreview({ data }: PDFPreviewProps) {
   const [error, setError] = useState<string | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const serviceRef = useRef<any>(null);
+  const [useCanvasViewer, setUseCanvasViewer] = useState(false);
+
+  useEffect(() => {
+    setUseCanvasViewer(isApplePlatform());
+  }, []);
 
   useEffect(() => {
     workerRef.current = new Worker(new URL("./pdf.worker.ts", import.meta.url));
@@ -87,13 +105,16 @@ export function PDFPreview({ data }: PDFPreviewProps) {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
         </div>
       )}
-      {url && (
-        <iframe
-          src={url}
-          className="w-full h-full border-none"
-          title="PDF Preview"
-        />
-      )}
+      {url &&
+        (useCanvasViewer ? (
+          <PDFCanvasViewer url={url} />
+        ) : (
+          <iframe
+            src={url}
+            className="w-full h-full border-none"
+            title="PDF Preview"
+          />
+        ))}
     </div>
   );
 }
